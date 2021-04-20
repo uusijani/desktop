@@ -450,7 +450,7 @@ bool deleteSyncRootRegistryKey(const QString &syncRootPath, const QString &provi
     return true;
 }
 
-OCC::Result<void, QString> OCC::CfApiWrapper::registerSyncRoot(const QString &path, const QString &providerName, const QString &providerVersion, const QString &folderAlias, const QString &displayName, const QString &accountDisplayName)
+OCC::Result<void, QString> OCC::CfApiWrapper::registerSyncRoot(const QString path, const QString providerName, const QString providerVersion, const QString folderAlias, const QString displayName, const QString accountDisplayName)
 {
     // even if we fail to register our sync root with shell, we can still proceed with using the VFS
     const auto createRegistryKeyResult = createSyncRootRegistryKeys(providerName, folderAlias, displayName, accountDisplayName, path);
@@ -462,9 +462,9 @@ OCC::Result<void, QString> OCC::CfApiWrapper::registerSyncRoot(const QString &pa
 
     // API is somehow keeping the pointers for longer than one would expect or freeing them itself
     // the internal format of QString is likely the right one for wstring on Windows so there's in fact not necessarily a need to copy
-    const auto p = std::wstring(path.toStdWString().data());
-    const auto name = std::wstring(providerName.toStdWString().data());
-    const auto version = std::wstring(providerVersion.toStdWString().data());
+    const auto p = path.toStdWString();
+    const auto name = providerName.toStdWString();
+    const auto version = providerVersion.toStdWString();
 
     CF_SYNC_REGISTRATION info;
     info.ProviderName = name.data();
