@@ -62,6 +62,28 @@
 
 namespace {
 constexpr auto propertyFolderInfo = "folderInfo";
+
+bool showEnableE2eeWithVirtualFilesWarningDialog()
+{
+    QMessageBox e2eeWithVirtualFilesWarningMsgBox;
+    e2eeWithVirtualFilesWarningMsgBox.setText("End-to-End Encryption with Virtual Files");
+    e2eeWithVirtualFilesWarningMsgBox.setInformativeText("You seem to have the Virtual Files feature enabled on this folder. At "
+                                                         " the moment, it is not possible to implicit downloading virtual files that are "
+                                                         "End-to-End encrypted. To get the best experience with Virtual Files and"
+                                                         " End-to-End Encryption, make sure the encrypted folder is marked with"
+                                                         " \"Make always available locally\".");
+    e2eeWithVirtualFilesWarningMsgBox.setIcon(QMessageBox::Warning);
+    const auto dontEncryptButton = e2eeWithVirtualFilesWarningMsgBox.addButton("Don't encrypt this folder", QMessageBox::AcceptRole);
+    const auto encryptButton = e2eeWithVirtualFilesWarningMsgBox.addButton("Encrypt this folder", QMessageBox::RejectRole);
+    e2eeWithVirtualFilesWarningMsgBox.exec();
+
+    if (e2eeWithVirtualFilesWarningMsgBox.clickedButton() == dontEncryptButton) {
+        return false;
+    } else if (e2eeWithVirtualFilesWarningMsgBox.clickedButton() == encryptButton) {
+        return true;
+    }
+    Q_UNREACHABLE();
+}
 }
 
 namespace OCC {
@@ -312,6 +334,14 @@ bool AccountSettings::canEncryptOrDecrypt (const FolderStatusModel::SubFolderInf
 void AccountSettings::slotMarkSubfolderEncrypted(FolderStatusModel::SubFolderInfo* folderInfo)
 {
     if (!canEncryptOrDecrypt(folderInfo)) {
+        return;
+    }
+
+    const auto folder = folderInfo->_folder;
+    Q_ASSERT(folder);
+    if (folder->virtualFilesEnabled()
+        && folder->vfs().mode() == Vfs::WindowsCfApi
+        && !showEnableE2eeWithVirtualFilesWarningDialog()) {
         return;
     }
 
