@@ -55,8 +55,6 @@
 #include <QVariant>
 #include <QJsonDocument>
 #include <QToolTip>
-#include <qstringlistmodel.h>
-#include <qpropertyanimation.h>
 
 #include "account.h"
 
@@ -74,16 +72,17 @@ bool showEnableE2eeWithVirtualFilesWarningDialog(QObject *parent)
                                                                     " End-to-End Encryption, make sure the encrypted folder is marked with"
                                                                     " \"Make always available locally\"."));
     e2eeWithVirtualFilesWarningMsgBox.setIcon(QMessageBox::Warning);
-    const auto dontEncryptButton = e2eeWithVirtualFilesWarningMsgBox.addButton(parent->tr("Don't encrypt this folder"), QMessageBox::AcceptRole);
-    const auto encryptButton = e2eeWithVirtualFilesWarningMsgBox.addButton(parent->tr("Encrypt this folder"), QMessageBox::RejectRole);
+    const auto dontEncryptButton = e2eeWithVirtualFilesWarningMsgBox.button(QMessageBox::StandardButton::Ok);
+    const auto encryptButton = e2eeWithVirtualFilesWarningMsgBox.button(QMessageBox::StandardButton::Cancel);
+    dontEncryptButton->setText(parent->tr("Encrypt this folder"));
+    encryptButton->setText(parent->tr("Encrypt this folder"));
     e2eeWithVirtualFilesWarningMsgBox.exec();
 
     if (e2eeWithVirtualFilesWarningMsgBox.clickedButton() == dontEncryptButton) {
         return false;
-    } else if (e2eeWithVirtualFilesWarningMsgBox.clickedButton() == encryptButton) {
-        return true;
     }
-    Q_UNREACHABLE();
+
+    return true;
 }
 }
 
