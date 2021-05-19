@@ -21,6 +21,7 @@
 namespace OCC {
 class HydrationJob;
 class VfsCfApiPrivate;
+class SyncJournalFileRecord;
 
 class VfsCfApi : public Vfs
 {
@@ -68,7 +69,7 @@ protected:
     void startImpl(const VfsSetupParams &params) override;
 
 private:
-    void scheduleHydrationJob(const QString &requestId, const QString &folderPath);
+    void scheduleHydrationJob(const QString &requestId, const QString &folderPath, const SyncJournalFileRecord &record);
     void onHydrationJobFinished(HydrationJob *job);
     void onHydrationJobCanceled(HydrationJob *job);
 

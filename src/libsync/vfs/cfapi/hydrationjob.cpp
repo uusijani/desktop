@@ -15,7 +15,8 @@
 #include "hydrationjob.h"
 
 #include "common/syncjournaldb.h"
-#include "propagatedownload.h"
+#include <propagatedownload.h>
+#include <clientsideencryptionjobs.h>
 
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -88,6 +89,35 @@ void OCC::HydrationJob::setFolderPath(const QString &folderPath)
     _folderPath = folderPath;
 }
 
+bool OCC::HydrationJob::isEncryptedFile() const
+{
+    return _isEncryptedFile;
+}
+
+void OCC::HydrationJob::setIsEncryptedFile(bool isEncrypted)
+{
+    _isEncryptedFile = isEncrypted;
+}
+
+QString OCC::HydrationJob::encryptedFileName() const
+{
+    return _encryptedFileName;
+}
+
+void OCC::HydrationJob::setEncryptedFileName(const QString &encryptedName)
+{
+    _encryptedFileName = encryptedName;
+}
+
+qint64 OCC::HydrationJob::fileTotalSize() const
+{
+    return _fileTotalSize;
+}
+void OCC::HydrationJob::setFileTotalSize(qint64 totalSize)
+{
+    _fileTotalSize = totalSize;
+}
+
 OCC::HydrationJob::Status OCC::HydrationJob::status() const
 {
     return _status;
@@ -104,16 +134,65 @@ void OCC::HydrationJob::start()
     Q_ASSERT(_localPath.endsWith('/'));
     Q_ASSERT(!_folderPath.startsWith('/'));
 
-    _server = new QLocalServer(this);
-    const auto listenResult = _server->listen(_requestId);
-    if (!listenResult) {
-        qCCritical(lcHydration) << "Couldn't get server to listen" << _requestId << _localPath << _folderPath;
-        emitFinished(Error);
-        return;
-    }
+    startServerAndWaitForConnections();
+}
 
-    qCInfo(lcHydration) << "Server ready, waiting for connections" << _requestId << _localPath << _folderPath;
-    connect(_server, &QLocalServer::newConnection, this, &HydrationJob::onNewConnection);
+void OCC::HydrationJob::slotFolderIdError()
+{
+  qCCritical(lcHydration) << "Failed to get encrypted metadata of folder" << _requestId << _localPath << _folderPath;
+  emitFinished(Error);
+}
+
+void OCC::HydrationJob::slotCheckFolderId(const QStringList &list)
+{
+  auto job = qobject_cast<LsColJob*>(sender());
+  const QString folderId = list.first();
+  qCDebug(lcHydration) << "Received id of folder" << folderId;
+
+  const ExtraFolderInfo &folderInfo = job->_folderInfos.value(folderId);
+
+  // Now that we have the folder-id we need it's JSON metadata
+  auto metadataJob = new GetMetadataApiJob(_account, folderInfo.fileId);
+  connect(metadataJob, &GetMetadataApiJob::jsonReceived,
+          this, &HydrationJob::slotCheckFolderEncryptedMetadata);
+  connect(metadataJob, &GetMetadataApiJob::error,
+          this, &HydrationJob::slotFolderEncryptedMetadataError);
+
+  metadataJob->start();
+}
+
+void OCC::HydrationJob::slotFolderEncryptedMetadataError(const QByteArray & /*fileId*/, int /*httpReturnCode*/)
+{
+    qCCritical(lcHydration) << "Failed to find encrypted metadata information of remote file" << encryptedFileName();
+    emitFinished(Error);
+    return;
+}
+
+void OCC::HydrationJob::slotCheckFolderEncryptedMetadata(const QJsonDocument &json)
+{
+  qCDebug(lcHydration) << "Metadata Received reading" << encryptedFileName();
+  const QString filename = encryptedFileName();
+  auto meta = new FolderMetadata(_account, json.toJson(QJsonDocument::Compact));
+  const QVector<EncryptedFile> files = meta->files();
+
+  const QString encryptedFileExactName = encryptedFileName().section(QLatin1Char('/'), -1);
+  for (const EncryptedFile &file : files) {
+    if (encryptedFileExactName == file.encryptedFilename) {
+      _encryptedInfo = file;
+
+      qCDebug(lcHydration) << "Found matching encrypted metadata for file, starting download" << _requestId << _folderPath;
+      _socket = _server->nextPendingConnection();
+      _job = new GETEncryptedFileJob(_account, _remotePath + encryptedFileName(), _socket, {}, {}, 0, _encryptedInfo, fileTotalSize(), this);
+
+      connect(qobject_cast<GETEncryptedFileJob*>(_job), &GETEncryptedFileJob::decryptionFinishedSignal, this, &HydrationJob::onGetFinished);
+      connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
+      _job->start();
+      return;
+    }
+  }
+
+  qCCritical(lcHydration) << "Failed to find encrypted metadata information of remote file" << filename;
+  emitFinished(Error);
 }
 
 void OCC::HydrationJob::cancel()
@@ -135,7 +214,9 @@ void OCC::HydrationJob::emitFinished(Status status)
         });
         _socket->disconnectFromServer();
     } else {
-        _socket->close();
+        if (_socket) {
+            _socket->close();
+        }
         emit finished(this);
     }
 }
@@ -155,18 +236,56 @@ void OCC::HydrationJob::onNewConnection()
     Q_ASSERT(!_socket);
     Q_ASSERT(!_job);
 
-    qCInfo(lcHydration) << "Got new connection starting GETFileJob" << _requestId << _folderPath;
-    _socket = _server->nextPendingConnection();
-    _job = new GETFileJob(_account, _remotePath + _folderPath, _socket, {}, {}, 0, this);
-    connect(_job, &GETFileJob::finishedSignal, this, &HydrationJob::onGetFinished);
-    connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
-    _job->start();
+    if (isEncryptedFile()) {
+        qCInfo(lcHydration) << "Got new connection for encrypted file. Getting required info for decryption...";
+        const auto rootPath = [=]() {
+            const auto result = _remotePath;
+            if (result.startsWith('/')) {
+                return result.mid(1);
+            } else {
+                return result;
+            }
+        }();
+
+        const auto remoteFilename = encryptedFileName();
+        const auto remotePath = QString(rootPath + remoteFilename);
+        const auto remoteParentPath = remotePath.left(remotePath.lastIndexOf('/'));
+
+        auto job = new LsColJob(_account, remoteParentPath, this);
+        job->setProperties({"resourcetype", "http://owncloud.org/ns:fileid"});
+        connect(job, &LsColJob::directoryListingSubfolders,
+                this, &HydrationJob::slotCheckFolderId);
+        connect(job, &LsColJob::finishedWithError,
+                this, &HydrationJob::slotFolderIdError);
+        job->start();
+    } else {
+        qCInfo(lcHydration) << "Got new connection starting GETFileJob" << _requestId << _folderPath;
+        _socket = _server->nextPendingConnection();
+        _job = new GETFileJob(_account, _remotePath + _folderPath, _socket, {}, {}, 0, this);
+        connect(_job, &GETFileJob::finishedSignal, this, &HydrationJob::onGetFinished);
+        connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
+        _job->start();
+    }
 }
 
 void OCC::HydrationJob::onGetCanceled()
 {
     qCInfo(lcHydration) << "GETFileJob canceled" << _requestId << _folderPath << _job->reply()->error();
     emitCanceled();
+}
+
+void OCC::HydrationJob::startServerAndWaitForConnections()
+{
+    _server = new QLocalServer(this);
+    const auto listenResult = _server->listen(_requestId);
+    if (!listenResult) {
+        qCCritical(lcHydration) << "Couldn't get server to listen" << _requestId << _localPath << _folderPath;
+        emitFinished(Error);
+        return;
+    }
+
+    qCInfo(lcHydration) << "Server ready, waiting for connections" << _requestId << _localPath << _folderPath;
+    connect(_server, &QLocalServer::newConnection, this, &HydrationJob::onNewConnection);
 }
 
 void OCC::HydrationJob::onGetFinished()

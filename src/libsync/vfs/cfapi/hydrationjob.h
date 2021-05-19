@@ -23,6 +23,7 @@ class QLocalSocket;
 namespace OCC {
 class GETFileJob;
 class SyncJournalDb;
+class PropagateDownloadEncrypted;
 
 class OWNCLOUDSYNC_EXPORT HydrationJob : public QObject
 {
@@ -54,10 +55,25 @@ public:
     QString folderPath() const;
     void setFolderPath(const QString &folderPath);
 
+    bool isEncryptedFile() const;
+    void setIsEncryptedFile(bool isEncrypted);
+
+    QString encryptedFileName() const;
+    void setEncryptedFileName(const QString &encryptedName);
+
+    qint64 fileTotalSize() const;
+    void setFileTotalSize(qint64 totalSize);
+
     Status status() const;
 
     void start();
     void cancel();
+
+public slots:
+    void slotCheckFolderId(const QStringList &list);
+    void slotFolderIdError();
+    void slotCheckFolderEncryptedMetadata(const QJsonDocument &json);
+    void slotFolderEncryptedMetadataError(const QByteArray &fileId, int httpReturnCode);
 
 signals:
     void finished(HydrationJob *job);
@@ -71,6 +87,8 @@ private:
     void onGetFinished();
     void onGetCanceled();
 
+    void startServerAndWaitForConnections();
+
     AccountPtr _account;
     QString _remotePath;
     QString _localPath;
@@ -78,6 +96,13 @@ private:
 
     QString _requestId;
     QString _folderPath;
+
+    bool _isEncryptedFile = false;
+    QString _encryptedFileName;
+
+    EncryptedFile _encryptedInfo;
+
+    qint64 _fileTotalSize = 0;
 
     QLocalServer *_server = nullptr;
     QLocalSocket *_socket = nullptr;
