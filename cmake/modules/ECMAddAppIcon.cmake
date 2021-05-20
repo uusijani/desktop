@@ -127,10 +127,16 @@ function(ecm_add_app_icon appsources)
                     message(AUTHOR_WARNING "ksvg2icns could not generate an OS X application icon from ${icon}")
                 else()
                     # install the icns file we just created
-                    get_filename_component(icon_name ${icon_full} NAME_WE)
-                    set(MACOSX_BUNDLE_ICON_FILE ${icon_name}.icns PARENT_SCOPE)
-                    set(${appsources} "${${appsources}};${CMAKE_CURRENT_BINARY_DIR}/${icon_name}.icns" PARENT_SCOPE)
-                    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${icon_name}.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+                    get_filename_component(_outfilebasename ${icon_full} NAME_WE)
+                    if (ARG_OUTFILE_BASENAME)
+                      file(RENAME
+                        "${CMAKE_CURRENT_BINARY_DIR}/${_outfilebasename}.icns"
+                        "${CMAKE_CURRENT_BINARY_DIR}/${ARG_OUTFILE_BASENAME}.icns")
+                        set(_outfilebasename "${ARG_OUTFILE_BASENAME}")
+                    endif()
+                    set(MACOSX_BUNDLE_ICON_FILE ${_outfilebasename}.icns PARENT_SCOPE)
+                    set(${appsources} "${${appsources}};${CMAKE_CURRENT_BINARY_DIR}/${_outfilebasename}.icns" PARENT_SCOPE)
+                    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${_outfilebasename}.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
                     # we're done now
                     return()
                 endif()
