@@ -25,6 +25,10 @@ class GETFileJob;
 class SyncJournalDb;
 class PropagateDownloadEncrypted;
 
+namespace EncryptionHelper {
+class StreamingDecryptor;
+};
+
 class OWNCLOUDSYNC_EXPORT HydrationJob : public QObject
 {
     Q_OBJECT
@@ -87,8 +91,6 @@ private:
     void onGetFinished();
     void onGetCanceled();
 
-    void startServerAndWaitForConnections();
-
     AccountPtr _account;
     QString _remotePath;
     QString _localPath;
@@ -107,6 +109,10 @@ private:
     QLocalServer *_server = nullptr;
     QLocalSocket *_socket = nullptr;
     GETFileJob *_job = nullptr;
+
+    QBuffer _encryptedFileBiffer;
+
+    QScopedPointer<EncryptionHelper::StreamingDecryptor> _decryptor;
     Status _status = Success;
 };
 

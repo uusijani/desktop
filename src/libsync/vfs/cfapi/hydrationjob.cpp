@@ -134,7 +134,16 @@ void OCC::HydrationJob::start()
     Q_ASSERT(_localPath.endsWith('/'));
     Q_ASSERT(!_folderPath.startsWith('/'));
 
-    startServerAndWaitForConnections();
+    _server = new QLocalServer(this);
+    const auto listenResult = _server->listen(_requestId);
+    if (!listenResult) {
+        qCCritical(lcHydration) << "Couldn't get server to listen" << _requestId << _localPath << _folderPath;
+        emitFinished(Error);
+        return;
+    }
+
+    qCInfo(lcHydration) << "Server ready, waiting for connections" << _requestId << _localPath << _folderPath;
+    connect(_server, &QLocalServer::newConnection, this, &HydrationJob::onNewConnection);
 }
 
 void OCC::HydrationJob::slotFolderIdError()
@@ -179,6 +188,8 @@ void OCC::HydrationJob::slotCheckFolderEncryptedMetadata(const QJsonDocument &js
   for (const EncryptedFile &file : files) {
     if (encryptedFileExactName == file.encryptedFilename) {
       _encryptedInfo = file;
+
+      _decryptor.reset(new EncryptionHelper::StreamingDecryptor(_socket, _encryptedInfo.encryptionKey, _encryptedInfo.initializationVector, fileTotalSize()));
 
       qCDebug(lcHydration) << "Found matching encrypted metadata for file, starting download" << _requestId << _folderPath;
       _socket = _server->nextPendingConnection();
@@ -272,20 +283,6 @@ void OCC::HydrationJob::onGetCanceled()
 {
     qCInfo(lcHydration) << "GETFileJob canceled" << _requestId << _folderPath << _job->reply()->error();
     emitCanceled();
-}
-
-void OCC::HydrationJob::startServerAndWaitForConnections()
-{
-    _server = new QLocalServer(this);
-    const auto listenResult = _server->listen(_requestId);
-    if (!listenResult) {
-        qCCritical(lcHydration) << "Couldn't get server to listen" << _requestId << _localPath << _folderPath;
-        emitFinished(Error);
-        return;
-    }
-
-    qCInfo(lcHydration) << "Server ready, waiting for connections" << _requestId << _localPath << _folderPath;
-    connect(_server, &QLocalServer::newConnection, this, &HydrationJob::onNewConnection);
 }
 
 void OCC::HydrationJob::onGetFinished()
