@@ -18,6 +18,8 @@
 #include <propagatedownload.h>
 #include <clientsideencryptionjobs.h>
 
+#include "filesystem.h"
+
 #include <QLocalServer>
 #include <QLocalSocket>
 
@@ -179,31 +181,32 @@ void OCC::HydrationJob::slotFolderEncryptedMetadataError(const QByteArray & /*fi
 
 void OCC::HydrationJob::slotCheckFolderEncryptedMetadata(const QJsonDocument &json)
 {
-  qCDebug(lcHydration) << "Metadata Received reading" << encryptedFileName();
-  const QString filename = encryptedFileName();
-  auto meta = new FolderMetadata(_account, json.toJson(QJsonDocument::Compact));
-  const QVector<EncryptedFile> files = meta->files();
+    qCDebug(lcHydration) << "Metadata Received reading" << encryptedFileName();
+    const QString filename = encryptedFileName();
+    auto meta = new FolderMetadata(_account, json.toJson(QJsonDocument::Compact));
+    const QVector<EncryptedFile> files = meta->files();
 
-  const QString encryptedFileExactName = encryptedFileName().section(QLatin1Char('/'), -1);
-  for (const EncryptedFile &file : files) {
-    if (encryptedFileExactName == file.encryptedFilename) {
-      _encryptedInfo = file;
+    EncryptedFile encryptedInfo = {};
 
-      _decryptor.reset(new EncryptionHelper::StreamingDecryptor(_socket, _encryptedInfo.encryptionKey, _encryptedInfo.initializationVector, fileTotalSize()));
+    const QString encryptedFileExactName = encryptedFileName().section(QLatin1Char('/'), -1);
+    for (const EncryptedFile &file : files) {
+        if (encryptedFileExactName == file.encryptedFilename) {
+            EncryptedFile encryptedInfo = file;
+            encryptedInfo = file;
 
-      qCDebug(lcHydration) << "Found matching encrypted metadata for file, starting download" << _requestId << _folderPath;
-      _socket = _server->nextPendingConnection();
-      _job = new GETEncryptedFileJob(_account, _remotePath + encryptedFileName(), _socket, {}, {}, 0, _encryptedInfo, fileTotalSize(), this);
+            qCDebug(lcHydration) << "Found matching encrypted metadata for file, starting download" << _requestId << _folderPath;
+            _socket = _server->nextPendingConnection();
+            _job = new GETEncryptedFileJob(_account, _remotePath + encryptedFileName(), _socket, {}, {}, 0, encryptedInfo, fileTotalSize(), this);
 
-      connect(qobject_cast<GETEncryptedFileJob*>(_job), &GETEncryptedFileJob::decryptionFinishedSignal, this, &HydrationJob::onGetFinished);
-      connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
-      _job->start();
-      return;
+            connect(qobject_cast<GETEncryptedFileJob*>(_job), &GETEncryptedFileJob::decryptionFinishedSignal, this, &HydrationJob::onGetFinished);
+            connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
+            _job->start();
+            return;
+        }
     }
-  }
 
-  qCCritical(lcHydration) << "Failed to find encrypted metadata information of remote file" << filename;
-  emitFinished(Error);
+    qCCritical(lcHydration) << "Failed to find encrypted metadata information of a remote file" << filename;
+    emitFinished(Error);
 }
 
 void OCC::HydrationJob::cancel()
@@ -304,6 +307,8 @@ void OCC::HydrationJob::onGetFinished()
     }
 
     record._type = ItemTypeFile;
+    record._fileSizeE2EE = record._fileSizeE2EE == 0 ? record._fileSize : record._fileSizeE2EE;
+    record._fileSize = FileSystem::getSize(localPath() + folderPath());
     _journal->setFileRecord(record);
     emitFinished(Success);
 }

@@ -73,8 +73,6 @@ private:
     void onHydrationJobFinished(HydrationJob *job);
     void onHydrationJobCanceled(HydrationJob *job);
 
-    qint64 calculatePlaceholderSize(const SyncFileItem &item) const;
-
     struct HasHydratedDehydrated {
         bool hasHydrated = false;
         bool hasDehydrated = false;

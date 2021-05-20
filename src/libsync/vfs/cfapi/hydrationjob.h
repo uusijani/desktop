@@ -23,7 +23,6 @@ class QLocalSocket;
 namespace OCC {
 class GETFileJob;
 class SyncJournalDb;
-class PropagateDownloadEncrypted;
 
 namespace EncryptionHelper {
 class StreamingDecryptor;
@@ -102,17 +101,12 @@ private:
     bool _isEncryptedFile = false;
     QString _encryptedFileName;
 
-    EncryptedFile _encryptedInfo;
-
     qint64 _fileTotalSize = 0;
 
     QLocalServer *_server = nullptr;
     QLocalSocket *_socket = nullptr;
     GETFileJob *_job = nullptr;
 
-    QBuffer _encryptedFileBiffer;
-
-    QScopedPointer<EncryptionHelper::StreamingDecryptor> _decryptor;
     Status _status = Success;
 };
 
