@@ -307,8 +307,12 @@ void OCC::HydrationJob::onGetFinished()
     }
 
     record._type = ItemTypeFile;
-    record._fileSizeE2EE = record._fileSizeE2EE == 0 ? record._fileSize : record._fileSizeE2EE;
-    record._fileSize = FileSystem::getSize(localPath() + folderPath());
+    if (!record._e2eMangledName.isEmpty()) {
+        record._fileSizeNonE2EE = FileSystem::getSize(localPath() + folderPath());
+        record._fileSize = record._fileSizeNonE2EE;
+    } else {
+        record._fileSize = FileSystem::getSize(localPath() + folderPath());
+    }
     _journal->setFileRecord(record);
     emitFinished(Success);
 }

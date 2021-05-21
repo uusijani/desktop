@@ -24,8 +24,8 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QThreadPool>
-#include "common/checksums.h"
-#include "common/constants.h"
+#include <common/checksums.h>
+#include <common/constants.h>
 #include "csync_exclude.h"
 #include "csync.h"
 
@@ -178,7 +178,7 @@ void ProcessDirectoryJob::process()
         // For windows, the hidden state is also discovered within the vio
         // local stat function.
         // Recall file shall not be ignored (#4420)
-        bool isHidden = e.localEntry.isHidden || (f.first[0] == '.' && f.first != QLatin1String(".sys.admin#recall#"));
+        bool isHidden = e.localEntry.isHidden || (!f.first.isEmpty() && f.first[0] == '.' && f.first != QLatin1String(".sys.admin#recall#"));
 #ifdef Q_OS_WIN
         // exclude ".lnk" files as they are not essential, but, causing troubles when enabling the VFS due to QFileInfo::isDir() and other methods are freezing, which causes the ".lnk" files to start hydrating and freezing the app eventually.
         const bool isServerEntryWindowsShortcut = !e.localEntry.isValid() && e.serverEntry.isValid() && !e.serverEntry.isDirectory && FileSystem::isLnkFile(e.serverEntry.name);
@@ -346,6 +346,7 @@ void ProcessDirectoryJob::processFile(PathTuple path,
     item->_file = path._target;
     item->_originalFile = path._original;
     item->_previousSize = dbEntry._fileSize;
+    item->_previousSizeNonE2EE = dbEntry._fileSizeNonE2EE;
     item->_previousModtime = dbEntry._modtime;
 
     // The item shall only have this type if the db request for the virtual download
@@ -504,8 +505,8 @@ void ProcessDirectoryJob::processFileAnalyzeRemoteInfo(
     item->_size = serverEntry.size;
 
     if (!serverEntry.e2eMangledName.isEmpty()) {
-        // we've received an encrypted server entry, so, we must store it's actual size (including the encryption tag at the end)
-        item->_sizeE2ee = serverEntry.size;
+        // we've received an encrypted server entry, so, we must store it's actual size (without the E2EE tag at the end)
+        item->_sizeNonE2EE = serverEntry.size - OCC::CommonConstants::e2EeTagSize;
     }
 
     auto postProcessServerNew = [=] () {
@@ -529,9 +530,6 @@ void ProcessDirectoryJob::processFileAnalyzeRemoteInfo(
             && opts._vfs->mode() != Vfs::Off
             && _pinState != PinState::AlwaysLocal) {
             item->_type = ItemTypeVirtualFile;
-            if (!item->_encryptedFileName.isEmpty()) {
-                item->_size = serverEntry.size - OCC::CommonConstants::e2EeTagSize;
-            }
             if (isVfsWithSuffix())
                 addVirtualFileSuffix(tmp_path._original);
         }
@@ -831,6 +829,7 @@ void ProcessDirectoryJob::processFileAnalyzeLocalInfo(
                 item->_instruction = CSYNC_INSTRUCTION_SYNC;
                 item->_type = ItemTypeVirtualFileDownload;
                 item->_previousSize = 1;
+                item->_previousSizeNonE2EE = 1;
             }
         } else if (serverModified
             || (isVfsWithSuffix() && dbEntry.isVirtualFile())) {
@@ -1145,6 +1144,7 @@ void ProcessDirectoryJob::processFileConflict(const SyncFileItemPtr &item, Proce
             rec._fileId = serverEntry.fileId;
             rec._modtime = serverEntry.modtime;
             rec._type = item->_type;
+            // do we also need non-E2EE size here?
             rec._fileSize = serverEntry.size;
             rec._remotePerm = serverEntry.remotePerm;
             rec._checksumHeader = serverEntry.checksumHeader;
