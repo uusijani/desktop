@@ -1,6 +1,52 @@
 project(gui)
 find_package(Qt5 REQUIRED COMPONENTS Widgets Svg Qml Quick QuickControls2)
 
+# Generate icons
+if (APPLE)
+  # TODO: Make this function available for other platforms too
+  find_program(INKSCAPE inkscape REQUIRED)
+  function(generate_sized_png_from_svg icon_path size)
+    get_filename_component(icon_name_dir ${icon_path} DIRECTORY)
+    get_filename_component(icon_name_wle ${icon_path} NAME_WLE)
+
+    if (EXISTS "${icon_name_dir}/${size}-${icon_name_wle}.png")
+      return()
+    endif()
+
+    execute_process(COMMAND
+      "${INKSCAPE}" -w ${size} -h ${size} ${icon_path} --export-filename "${size}-${icon_name_wle}.png"
+      WORKING_DIRECTORY ${icon_name_dir}
+      RESULT_VARIABLE
+      INKSCAPE_SIDEBAR_ERROR)
+
+    if (INKSCAPE_SIDEBAR_ERROR)
+      message(FATAL_ERROR
+        "inkscape could not generate macOS sidebar icon: ${INKSCAPE_SIDEBAR_ERROR}")
+    else()
+    endif()
+  endfunction()
+
+  # TODO: Move this variable into NEXTCLOUD.cmake (needs a brander pr)
+  set(MACOS_SIDEBAR_ICON ${CMAKE_SOURCE_DIR}/theme/colored/Nextcloud-sidebar.svg)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 16)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 32)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 64)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 128)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 256)
+
+  # TODO: Move this variable into NEXTCLOUD.cmake (needs a brander pr)
+  set(MACOS_APP_ICON ${CMAKE_SOURCE_DIR}/theme/colored/Nextcloud-icon.svg)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 16)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 24)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 32)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 48)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 64)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 128)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 256)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 512)
+  generate_sized_png_from_svg(${MACOS_APP_ICON} 1024)
+endif()
+
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     add_definitions(-DQT_QML_DEBUG)
 endif()
