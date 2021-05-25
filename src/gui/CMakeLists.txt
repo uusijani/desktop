@@ -269,6 +269,12 @@ if(APPLE)
   generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 256)
 endif()
 
+if(WIN32)
+  set(STARTMENU_ICON_SVG "${theme_dir}/colored/${APPLICATION_ICON_NAME}-w10startmenu.svg")
+  generate_sized_png_from_svg(${STARTMENU_ICON_SVG} 70)
+  generate_sized_png_from_svg(${STARTMENU_ICON_SVG} 150)
+endif()
+
 set(APP_ICON_SVG "${theme_dir}/colored/${APPLICATION_ICON_NAME}-icon.svg")
 generate_sized_png_from_svg(${APP_ICON_SVG} 16)
 generate_sized_png_from_svg(${APP_ICON_SVG} 24)
