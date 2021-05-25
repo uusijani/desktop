@@ -337,14 +337,6 @@ void AccountSettings::slotMarkSubfolderEncrypted(FolderStatusModel::SubFolderInf
         return;
     }
 
-    const auto folder = folderInfo->_folder;
-    Q_ASSERT(folder);
-    if (folder->virtualFilesEnabled()
-        && folder->vfs().mode() == Vfs::WindowsCfApi
-        && !showEnableE2eeWithVirtualFilesWarningDialog()) {
-        return;
-    }
-
     // Folder info have directory paths in Foo/Bar/ convention...
     Q_ASSERT(!folderInfo->_path.startsWith('/') && folderInfo->_path.endsWith('/'));
     // But EncryptFolderJob expects directory path Foo/Bar convention

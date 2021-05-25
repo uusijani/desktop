@@ -391,10 +391,6 @@ GETEncryptedFileJob::GETEncryptedFileJob(AccountPtr account, const QUrl &url, QI
     _decryptor.reset(new EncryptionHelper::StreamingDecryptor(encryptedInfo.encryptionKey, encryptedInfo.initializationVector, totalSize));
 }
 
-GETEncryptedFileJob::~GETEncryptedFileJob()
-{
-}
-
 qint64 GETEncryptedFileJob::writeToDevice(const char *data, qint64 len)
 {
     if (!_decryptor->isInitialized()) {
@@ -411,11 +407,6 @@ qint64 GETEncryptedFileJob::writeToDevice(const char *data, qint64 len)
     _writtenSoFar += bytesDecrypted;
 
     qCCritical(lcPropagateDownload) << "bytesDecrypted" << bytesDecrypted << "len" << len << "_writtenSoFar" << _writtenSoFar;
-
-    if (bytesDecrypted != -1 && _decryptor->isFinished()) {
-        emit decryptionFinishedSignal();
-        deleteLater();
-    }
 
     return len;
 }

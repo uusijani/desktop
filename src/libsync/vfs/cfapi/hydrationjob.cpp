@@ -198,7 +198,7 @@ void OCC::HydrationJob::slotCheckFolderEncryptedMetadata(const QJsonDocument &js
             _socket = _server->nextPendingConnection();
             _job = new GETEncryptedFileJob(_account, _remotePath + encryptedFileName(), _socket, {}, {}, 0, encryptedInfo, fileTotalSize(), this);
 
-            connect(qobject_cast<GETEncryptedFileJob*>(_job), &GETEncryptedFileJob::decryptionFinishedSignal, this, &HydrationJob::onGetFinished);
+            connect(qobject_cast<GETEncryptedFileJob *>(_job), &GETEncryptedFileJob::finishedSignal, this, &HydrationJob::onGetFinished);
             connect(_job, &GETFileJob::canceled, this, &HydrationJob::onGetCanceled);
             _job->start();
             return;
@@ -307,11 +307,13 @@ void OCC::HydrationJob::onGetFinished()
     }
 
     record._type = ItemTypeFile;
+
+    const auto fileSizeOnDisk = FileSystem::getSize(localPath() + folderPath());
     if (!record._e2eMangledName.isEmpty()) {
-        record._fileSizeNonE2EE = FileSystem::getSize(localPath() + folderPath());
-        record._fileSize = record._fileSizeNonE2EE;
+        record._fileSizeNonE2EE = fileSizeOnDisk;
+        record._fileSize = fileSizeOnDisk;
     } else {
-        record._fileSize = FileSystem::getSize(localPath() + folderPath());
+        record._fileSize = fileSizeOnDisk;
     }
     _journal->setFileRecord(record);
     emitFinished(Success);
