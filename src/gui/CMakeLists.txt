@@ -21,7 +21,7 @@ if (APPLE)
 
     if (INKSCAPE_SIDEBAR_ERROR)
       message(FATAL_ERROR
-        "inkscape could not generate macOS sidebar icon: ${INKSCAPE_SIDEBAR_ERROR}")
+        "inkscape could not generate icon: ${INKSCAPE_SIDEBAR_ERROR}")
     else()
     endif()
   endfunction()
