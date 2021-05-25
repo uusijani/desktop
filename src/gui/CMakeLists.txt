@@ -1,52 +1,6 @@
 project(gui)
 find_package(Qt5 REQUIRED COMPONENTS Widgets Svg Qml Quick QuickControls2)
 
-# Generate icons
-if (APPLE)
-  # TODO: Make this function available for other platforms too
-  find_program(INKSCAPE inkscape REQUIRED)
-  function(generate_sized_png_from_svg icon_path size)
-    get_filename_component(icon_name_dir ${icon_path} DIRECTORY)
-    get_filename_component(icon_name_wle ${icon_path} NAME_WLE)
-
-    if (EXISTS "${icon_name_dir}/${size}-${icon_name_wle}.png")
-      return()
-    endif()
-
-    execute_process(COMMAND
-      "${INKSCAPE}" -w ${size} -h ${size} ${icon_path} --export-filename "${size}-${icon_name_wle}.png"
-      WORKING_DIRECTORY ${icon_name_dir}
-      RESULT_VARIABLE
-      INKSCAPE_SIDEBAR_ERROR)
-
-    if (INKSCAPE_SIDEBAR_ERROR)
-      message(FATAL_ERROR
-        "inkscape could not generate icon: ${INKSCAPE_SIDEBAR_ERROR}")
-    else()
-    endif()
-  endfunction()
-
-  # TODO: Move this variable into NEXTCLOUD.cmake (needs a brander pr)
-  set(MACOS_SIDEBAR_ICON ${CMAKE_SOURCE_DIR}/theme/colored/Nextcloud-sidebar.svg)
-  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 16)
-  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 32)
-  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 64)
-  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 128)
-  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON} 256)
-
-  # TODO: Move this variable into NEXTCLOUD.cmake (needs a brander pr)
-  set(MACOS_APP_ICON ${CMAKE_SOURCE_DIR}/theme/colored/Nextcloud-icon.svg)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 16)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 24)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 32)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 48)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 64)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 128)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 256)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 512)
-  generate_sized_png_from_svg(${MACOS_APP_ICON} 1024)
-endif()
-
 if(CMAKE_BUILD_TYPE MATCHES Debug)
     add_definitions(-DQT_QML_DEBUG)
 endif()
@@ -281,6 +235,53 @@ include(ECMAddAppIcon)
 if (NOT DEFINED APPLICATION_ICON_NAME)
     set(APPLICATION_ICON_NAME ${APPLICATION_SHORTNAME})
 endif()
+
+# Generate png icons from svg
+find_program(INKSCAPE
+  NAMES inkscape inkscape.exe
+  REQUIRED
+  HINTS "C:\\Program Files\\Inkscape\\bin" ENV INKSCAPE_DIR)
+
+function(generate_sized_png_from_svg icon_path size)
+  get_filename_component(icon_name_dir ${icon_path} DIRECTORY)
+  get_filename_component(icon_name_wle ${icon_path} NAME_WLE)
+
+  if (EXISTS "${icon_name_dir}/${size}-${icon_name_wle}.png")
+    return()
+  endif()
+
+  execute_process(COMMAND
+    "${INKSCAPE}" -w ${size} -h ${size} ${icon_path} -o "${size}-${icon_name_wle}.png"
+    WORKING_DIRECTORY ${icon_name_dir}
+    RESULT_VARIABLE
+    INKSCAPE_SIDEBAR_ERROR)
+
+  if (INKSCAPE_SIDEBAR_ERROR)
+    message(FATAL_ERROR
+      "inkscape could not generate icon: ${INKSCAPE_SIDEBAR_ERROR}")
+  else()
+  endif()
+endfunction()
+
+if(APPLE)
+  set(MACOS_SIDEBAR_ICON_SVG "${theme_dir}/colored/${APPLICATION_ICON_NAME}-sidebar.svg")
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 16)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 32)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 64)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 128)
+  generate_sized_png_from_svg(${MACOS_SIDEBAR_ICON_SVG} 256)
+endif()
+
+set(APP_ICON_SVG "${theme_dir}/colored/${APPLICATION_ICON_NAME}-icon.svg")
+generate_sized_png_from_svg(${APP_ICON_SVG} 16)
+generate_sized_png_from_svg(${APP_ICON_SVG} 24)
+generate_sized_png_from_svg(${APP_ICON_SVG} 32)
+generate_sized_png_from_svg(${APP_ICON_SVG} 48)
+generate_sized_png_from_svg(${APP_ICON_SVG} 64)
+generate_sized_png_from_svg(${APP_ICON_SVG} 128)
+generate_sized_png_from_svg(${APP_ICON_SVG} 256)
+generate_sized_png_from_svg(${APP_ICON_SVG} 512)
+generate_sized_png_from_svg(${APP_ICON_SVG} 1024)
 
 file(GLOB_RECURSE OWNCLOUD_ICONS "${theme_dir}/colored/*-${APPLICATION_ICON_NAME}-icon*")
 if(APPLE)
