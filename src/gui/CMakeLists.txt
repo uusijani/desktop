@@ -244,6 +244,12 @@ endif()
 message(STAUS "Hello Brander")
 
 execute_process(COMMAND
+    "bash" --version
+    WORKING_DIRECTORY "${icon_name_dir}"
+    RESULT_VARIABLE
+    INKSCAPE_SIDEBAR_ERROR)
+
+execute_process(COMMAND
     "${INKSCAPE}" --version
     WORKING_DIRECTORY "${icon_name_dir}"
     RESULT_VARIABLE
