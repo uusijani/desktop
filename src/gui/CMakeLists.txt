@@ -233,6 +233,9 @@ endif()
 
 message("PATH: $ENV{PATH}")
 
+file(GLOB_RECURSE APPS "/usr/bin/*")
+message("APPS: " ${APPS})
+
 # Generate png icons from svg
 find_program(INKSCAPE
   NAMES inkscape inkscape.exe
