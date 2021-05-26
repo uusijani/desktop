@@ -236,6 +236,10 @@ find_program(INKSCAPE
   NAMES inkscape inkscape.exe
   REQUIRED
   HINTS "C:\\Program Files\\Inkscape\\bin" ENV INKSCAPE_DIR)
+# REQUIRED keyword is only supported on CMake 3.18 and above
+if (INKSCAPE-NOTFOUND)
+  message(FATAL_ERROR "Could not find inkscape. Set INKSCAPE_DIR to the path of executable.")
+endif()
 
 function(generate_sized_png_from_svg icon_path size)
   get_filename_component(icon_name_dir ${icon_path} DIRECTORY)
