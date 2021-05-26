@@ -231,6 +231,8 @@ if (NOT DEFINED APPLICATION_ICON_NAME)
     set(APPLICATION_ICON_NAME ${APPLICATION_SHORTNAME})
 endif()
 
+message("PATH: $ENV{PATH}")
+
 # Generate png icons from svg
 find_program(INKSCAPE
   NAMES inkscape inkscape.exe
