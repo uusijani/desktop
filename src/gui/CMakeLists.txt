@@ -241,6 +241,8 @@ if (INKSCAPE-NOTFOUND)
   message(FATAL_ERROR "Could not find inkscape. Set INKSCAPE_DIR to the path of executable.")
 endif()
 
+message(STAUS "Hello Brander")
+
 execute_process(COMMAND
     "${INKSCAPE}" --version
     WORKING_DIRECTORY "${icon_name_dir}"
