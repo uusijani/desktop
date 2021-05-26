@@ -273,7 +273,7 @@ function(generate_sized_png_from_svg icon_path size)
   set(icon_output_name "${size}-${icon_name_wle}.png")
   message(STATUS "Generate ${icon_output_name}")
   execute_process(COMMAND
-    "${INKSCAPE}" -w ${size} -h ${size} "${icon_path}" -o "${icon_output_name}"
+    "${INKSCAPE}" --export-width=${size} --export-height=${size} "${icon_path}" --export-filename="${icon_output_name}"
     WORKING_DIRECTORY "${icon_name_dir}"
     RESULT_VARIABLE
     INKSCAPE_SIDEBAR_ERROR
