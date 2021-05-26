@@ -241,6 +241,12 @@ if (INKSCAPE-NOTFOUND)
   message(FATAL_ERROR "Could not find inkscape. Set INKSCAPE_DIR to the path of executable.")
 endif()
 
+execute_process(COMMAND
+    "${INKSCAPE}" --version
+    WORKING_DIRECTORY "${icon_name_dir}"
+    RESULT_VARIABLE
+    INKSCAPE_SIDEBAR_ERROR)
+
 function(generate_sized_png_from_svg icon_path size)
   get_filename_component(icon_name_dir ${icon_path} DIRECTORY)
   get_filename_component(icon_name_wle ${icon_path} NAME_WLE)
