@@ -277,8 +277,9 @@ function(generate_sized_png_from_svg icon_path size)
     WORKING_DIRECTORY "${icon_name_dir}"
     RESULT_VARIABLE
     INKSCAPE_SIDEBAR_ERROR
-    OUTPUT_QUIET
-    ERROR_QUIET)
+    # OUTPUT_QUIET
+    # ERROR_QUIET
+    )
 
   if (INKSCAPE_SIDEBAR_ERROR)
     message(FATAL_ERROR
