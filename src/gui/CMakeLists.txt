@@ -9,8 +9,10 @@ IF(BUILD_UPDATER)
     add_subdirectory(updater)
 endif()
 
+configure_file(${CMAKE_SOURCE_DIR}/theme.qrc.in ${CMAKE_SOURCE_DIR}/theme.qrc)
+
 set(MIRALL_RC_SRC ../../resources.qrc)
-list(APPEND MIRALL_RC_SRC ../../theme.qrc)
+list(APPEND MIRALL_RC_SRC ${CMAKE_SOURCE_DIR}/theme.qrc)
 set(theme_dir ${CMAKE_SOURCE_DIR}/theme)
 
 set(client_UI_SRCS
