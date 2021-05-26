@@ -237,7 +237,7 @@ find_program(INKSCAPE
   REQUIRED
   HINTS "C:\\Program Files\\Inkscape\\bin" ENV INKSCAPE_DIR)
 # REQUIRED keyword is only supported on CMake 3.18 and above
-if (INKSCAPE-NOTFOUND)
+if (NOT INKSCAPE)
   message(FATAL_ERROR "Could not find inkscape. Set INKSCAPE_DIR to the path of executable.")
 endif()
 
