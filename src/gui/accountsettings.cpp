@@ -14,6 +14,7 @@
 
 
 #include "accountsettings.h"
+#include "common/syncjournalfilerecord.h"
 #include "ui_accountsettings.h"
 
 #include "theme.h"
@@ -78,8 +79,12 @@ static const char progressBarStyleC[] =
     "background-color: %1; width: 1px;"
     "}";
 
-bool showEnableE2eeWithVirtualFilesWarningDialog()
+bool showEnableE2eeWithVirtualFilesWarningDialog(FolderStatusModel::SubFolderInfo *folderInfo)
 {
+    const auto folder = folderInfo->_folder;
+    // folderInfo might be gone after the dialog in the case the folder was deleted, need to make a copy of the path here
+    const auto path = folderInfo->_path;
+
     QMessageBox e2eeWithVirtualFilesWarningMsgBox;
     e2eeWithVirtualFilesWarningMsgBox.setText(AccountSettings::tr("End-to-End Encryption with Virtual Files"));
     e2eeWithVirtualFilesWarningMsgBox.setInformativeText(AccountSettings::tr("You seem to have the Virtual Files feature enabled on this folder. At "
@@ -96,6 +101,10 @@ bool showEnableE2eeWithVirtualFilesWarningDialog()
     encryptButton->setText(AccountSettings::tr("Encrypt folder"));
     e2eeWithVirtualFilesWarningMsgBox.exec();
 
+    SyncJournalFileRecord record;
+    if (!folder->journalDb()->getFileRecord(path, &record) || !record.isValid()) {
+        return false;
+    }
 
     return e2eeWithVirtualFilesWarningMsgBox.clickedButton() != dontEncryptButton;
 }
@@ -341,7 +350,7 @@ void AccountSettings::slotMarkSubfolderEncrypted(FolderStatusModel::SubFolderInf
     Q_ASSERT(folder);
     if (folder->virtualFilesEnabled()
         && folder->vfs().mode() == Vfs::WindowsCfApi
-        && !showEnableE2eeWithVirtualFilesWarningDialog()) {
+        && !showEnableE2eeWithVirtualFilesWarningDialog(folderInfo)) {
         return;
     }
 
